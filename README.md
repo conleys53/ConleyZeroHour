@@ -32,4 +32,4 @@ Run the program:
 - `beautifulsoup4`
 - More requirements listed as new features added.
 
-**⚠️ Disclaimer: This tool is still simply a proof of concept, not a replacement for Windows security!**
+**⚠️ Disclaimer: This tool is still simply a proof of concept, not meant for "real" usage!**
