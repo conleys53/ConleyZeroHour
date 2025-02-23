@@ -1,7 +1,7 @@
 # Conley ZeroHour
 *Tired of Windows repeatedly nagging you about updates with overcomplicated tech jargon?*<br />
 
-**Conley ZeroHour** simplifies operating system security by detecting Windows vulnerabilities and using AI to explain them in plain, easy-to-understand language! Built for [nosu.io's](www.nosu.io) "robhacks" hackathon, this tool passively monitors your system in the background for the newest security threats, fetching real-time data using Microsoft's MSRC API.
+**Conley ZeroHour** simplifies operating system security by detecting Windows vulnerabilities and using AI to explain them in plain, easy-to-understand language! Built for nosu.io's "robhacks" hackathon, this tool passively monitors your system in the background for the newest security threats, fetching real-time data using Microsoft's MSRC API.
 
 ## Features
 - Automatic detection of user's current Windows version and build
