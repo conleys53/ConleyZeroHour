@@ -1,3 +1,6 @@
 requests
 plyer
+google-generativeai
 beautifulsoup4
+win10toast_click
+cx_Freeze

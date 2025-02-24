@@ -1,15 +1,26 @@
-import requests
+import os
 import json
+import requests
+import datetime
+import time
 import platform
-from datetime import datetime, timedelta
 from plyer import notification
 from cve_scraper import get_cve_description
 
-#I SHOULD OF ORGANIZED THIS ENTIRE THING CONSIDERABLY BETTER.
+# I SHOULD OF ORGANIZED THIS ENTIRE THING CONSIDERABLY BETTER. WHAT A NIGHTMARE OF SPAGHETTI CODE.
 
 DAYS_BACK = 7  # check past 7 days for security updates
 MSRC_API_URL = "https://api.msrc.microsoft.com/cvrf/v2.0/updates"
 NOTIFIED_VULNS_FILE = "notified_vulnerabilities.json"
+API_KEY_FILE = "api.txt"  # API key stored in this file
+
+def get_api_key():
+    try:
+        with open(API_KEY_FILE, "r") as f:
+            return f.read().strip()
+    except FileNotFoundError:
+        print(f"⚠️ API key file '{API_KEY_FILE}' not found.")
+        return None
 
 def get_windows_version():
     version = platform.version()
@@ -34,16 +45,20 @@ def fetch_security_updates():
         response.raise_for_status()
         data = response.json()
 
-        # filter updates by date
-        cutoff_date = datetime.utcnow() - timedelta(days=DAYS_BACK)
+        cutoff_date = datetime.datetime.utcnow() - datetime.timedelta(days=DAYS_BACK)
         filtered_updates = []
 
         for update in data.get("value", []):
             release_date_str = update.get("CurrentReleaseDate", "")
+
             if release_date_str:
-                release_date = datetime.strptime(release_date_str, "%Y-%m-%dT%H:%M:%SZ")
-                if release_date >= cutoff_date:
-                    filtered_updates.append(update)
+                try:
+                    release_date = datetime.datetime.strptime(release_date_str, "%Y-%m-%dT%H:%M:%SZ")
+                    
+                    if release_date >= cutoff_date:
+                        filtered_updates.append(update)
+                except ValueError:
+                    print(f"⚠️ Invalid date format for update: {update.get('DocumentTitle', 'Unknown Title')}")
 
         print(f"Fetched {len(filtered_updates)} security updates from the past {DAYS_BACK} days.\n")
         return filtered_updates
@@ -63,12 +78,13 @@ def fetch_cvrf_severity(cvrf_url):
         vulnerabilities = data.get("Vulnerability", [])
         highest_severity = "Unknown"
 
+        # use critical/important threats
         for vuln in vulnerabilities:
             threats = vuln.get("Threats", [])
             for threat in threats:
                 if "Description" in threat:
                     severity = threat["Description"].get("Value", "Unknown")
-                    if severity in ["Critical", "Important"]:  # prioritize critical threats
+                    if severity in ["Critical", "Important"]:
                         highest_severity = severity
 
         return highest_severity
@@ -89,11 +105,16 @@ def save_notified_vulnerabilities(vulnerabilities):
         json.dump(vulnerabilities, f)
 
 def check_critical_vulnerabilities():
+    api_key = get_api_key()
+    if not api_key:
+        print("⚠️ No API key provided. Exiting.")
+        return
+    
     windows_version, build_number = get_windows_version()
     updates = fetch_security_updates()
     notified_vulns = load_notified_vulnerabilities()
     critical_issues = {}
-
+    
     if not updates:
         print("No security updates found.\n")
         return
@@ -111,9 +132,15 @@ def check_critical_vulnerabilities():
         if severity in ["Critical", "Important"]:
             cve_id = update.get("ID", "Unknown CVE")
             if cve_id not in notified_vulns:
-                description = get_cve_description(cve_id)  # fetch simplified description
+                description = get_cve_description(cve_id, api_key)
                 critical_issues[cve_id] = description
                 notified_vulns[cve_id] = severity  # mark it as notified
+
+    # inject CVE-2025-1594 for first-time detection, THIS IS A TEST.
+    if "CVE-2025-1594" not in notified_vulns:
+        print("🚨 Injecting CVE-2025-1594 for first-time detection.")
+        critical_issues["CVE-2025-1594"] = get_cve_description("CVE-2025-1594", api_key)
+        notified_vulns["CVE-2025-1594"] = "Critical"
 
     if critical_issues:
         notify_user(windows_version, critical_issues)
